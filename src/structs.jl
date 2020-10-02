@@ -34,9 +34,12 @@ function norm(v)
     sqrt(sum(v.^2))
 end
 
+isnumcol(type)= type <: Union{Missing,Number}
+
 function parseDataFrame(df::AbstractDataFrame)
 
-    value_columns = names(df[eltypes(df) .<: Union{Missing,Number}])
+    value_columns = names(x_df[eltypes(x_df) |> coltypes -> isnumcol.(coltypes)])
+    #value_columns = names(df[eltypes(df) .<: Union{Missing,Number}])
 
     X = convert(Array{Union{Missing,Float64},2}, df[value_columns])
 
