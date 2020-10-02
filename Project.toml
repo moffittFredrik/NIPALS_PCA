@@ -1,0 +1,23 @@
+name = "NIPALS_PCA"
+uuid = "6d34e894-ae79-4b37-8bb1-324840f02c67"
+authors = ["Fredrik Pettersson <fredrik.pettersson@moffitt.org>"]
+version = "0.1.0"
+
+[deps]
+CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+DocStringExtensions = "ffbed154-4ef7-542d-bbb7-c09d3a79fcae"
+FileIO = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
+JLD2 = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
+Pipe = "b98c9c47-44ae-5843-9183-064241ee97a0"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
+
+[compat]
+julia = "^1"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
