@@ -8,7 +8,7 @@ using DataFrames
 
     isnumcol(type) = type <: Union{Missing,Number}
 
-    x_df = CSV.File("./data/iris/iris.csv", header=false) |> DataFrame!
+    x_df = CSV.File("test/data/iris/iris.csv", header=false) |> DataFrame!
     select!(x_df, eltype.(eachcol(x_df)) |> coltypes -> isnumcol.(coltypes) |> findall)
     xdataset = parseDataFrame(x_df) |> dataset -> normalize(dataset)
 
