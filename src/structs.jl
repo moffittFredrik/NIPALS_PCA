@@ -38,10 +38,10 @@ isnumcol(type)= type <: Union{Missing,Number}
 
 function parseDataFrame(df::AbstractDataFrame)
 
-    value_columns = names(x_df[eltypes(x_df) |> coltypes -> isnumcol.(coltypes)])
+    value_columns = names(df[:,eltype.(eachcol(df)) |> coltypes -> isnumcol.(coltypes)])
     #value_columns = names(df[eltypes(df) .<: Union{Missing,Number}])
 
-    X = convert(Array{Union{Missing,Float64},2}, df[value_columns])
+    X = convert(Array{Union{Missing,Float64},2}, df[:,value_columns])
 
     var_means::Array{Float64,1} = [mean(skipmissing(col)) for col in eachcol(X) ]
     mean_mask = (!isnan).(var_means)
