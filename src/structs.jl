@@ -1,6 +1,7 @@
 using DataFrames
 using Statistics
 using JLD2
+using CategoricalArrays
 
 struct Dataset
     X::Array{Union{Missing,Float64},2}
@@ -14,8 +15,8 @@ end
 abstract type MultivariateModel end
 
 struct PCA <: MultivariateModel
-    P::DataFrame
     T::DataFrame
+    P::DataFrame
 end
 
 struct PLS <: MultivariateModel
@@ -133,4 +134,23 @@ function loadmodel(path::String)::Tuple{MultivariateModel,Array{Float64,1},Array
     close(jldfile)
 
     type(values...),stdevs,means
+end
+
+function selectNumerical(df)
+
+    isnumcol(type) = type <: Union{Missing,Number}
+
+    select(df, eltype.(eachcol(df)) |> coltypes -> isnumcol.(coltypes) |> findall)
+end
+
+function onehot(carray::CategoricalArray)    
+    lvls = carray |> levels
+
+    hots = [(carray .== lv) |> bvals -> convert(Array{Float64,1},bvals) for lv in lvls]
+
+    DataFrame((;zip(Symbol.(lvls), hots)...))
+end
+
+function predictLevel(carray::CategoricalArray,predMatrix::Array{Union{Missing, Float64},2})::Array{String,1}
+    predicted_classes = [findmax(row) |> last for row in eachrow(predMatrix)] |> maxidxs -> getindex(levels(carray),maxidxs)
 end

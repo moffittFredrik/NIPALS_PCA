@@ -154,7 +154,10 @@ function predictY(xdataset::Dataset, W::Array{Float64,2}, P::Array{Float64,2}, C
         X[.~xmask] .= 0 
     end
 
-    return cat(Ycvs...,dims=3),X
+    YpredVar = cat(Ycvs...,dims=3)
+    Xres = X
+
+    return (;YpredVar,Xres)
 end
 
 function crossvalidate(xdataset::Dataset, ydataset::Dataset, comps::Int64, cvgroups::Int64=7)
@@ -164,9 +167,9 @@ function crossvalidate(xdataset::Dataset, ydataset::Dataset, comps::Int64, cvgro
     Ycv = Array{Union{Missing, Float64}}(missing, (size(ydataset.X)...,comps))
 
     for (train,test) in cvgroups
-        T,P,C,W,U = calcPLS(xdataset,ydataset,comps, train)      
+        cvmodel = calcPLS(xdataset,ydataset,comps, train)      
 
-        Ycv[test,:,:] = predictY(xdataset,W,P,C,test,comps=comps)[1] 
+        Ycv[test,:,:] = predictY(xdataset,cvmodel,test,comps=comps).YpredVar
     end
 
     return calcQ2(Ycv,ydataset.X)
