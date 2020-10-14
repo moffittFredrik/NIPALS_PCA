@@ -2,26 +2,6 @@ using DataFrames,CSV,Pipe
 using DocStringExtensions
 
 #include("structs.jl")
-#= x_df = CSV.File("/Users/petterhf/projects/bioinformatics/normalization/x.txt") |> DataFrame!
-y_df = CSV.File("/Users/petterhf/projects/bioinformatics/normalization/y.txt") |> DataFrame!
-
-yda_df = CSV.File("/Users/petterhf/projects/bioinformatics/normalization/input_matrix_for_plsda_training_transposed.txt") |> DataFrame!
-
-meta_df = CSV.File("/Users/petterhf/projects/bioinformatics/normalization/avatar_myeloma_debatched_v041_metadata.txt") |> DataFrame!
-
-xdataset = @pipe parseDataFrame(x_df) |> normalize(_)
-ydataset = @pipe parseDataFrame(y_df) |> normalize(_)
-
-pls = calcPLS(xdataset,ydataset,3)
-
-savemodel(pls,xdataset,"testing.jld2")
-
-loadedmodel, stdevs, means = loadmodel("testing.jld2")
-
-preddataset = @pipe parseDataFrame(x_df) |> normalize(_,doscale=true,stdevs=_.stdevs,means=_.means)
-
-predictY(preddataset,loadedmodel) =#
-
 
 """
 $(FUNCTIONNAME)(xdataset::Dataset,ydataset::Dataset,comps::Int64,incsamples::Array{Int64,1} = collect(1:size(xdataset.X)[1]))
@@ -157,7 +137,13 @@ function predictY(xdataset::Dataset, W::Array{Float64,2}, P::Array{Float64,2}, C
     YpredVar = cat(Ycvs...,dims=3)
     Xres = X
 
+    Xres[.~xmask] .= missing
+
     return (;YpredVar,Xres)
+end
+
+function setmissing(model::T, dataset::Dataset) where T <: MultivariateModel
+    model.Xres[.~dataset.xmask] .= missing
 end
 
 function crossvalidate(xdataset::Dataset, ydataset::Dataset, comps::Int64, cvgroups::Int64=7)

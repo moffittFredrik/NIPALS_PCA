@@ -140,7 +140,12 @@ function selectNumerical(df)
 
     isnumcol(type) = type <: Union{Missing,Number}
 
-    select(df, eltype.(eachcol(df)) |> coltypes -> isnumcol.(coltypes) |> findall)
+    select(df, eltype.(eachcol(df)) |> (coltypes -> isnumcol.(coltypes)) |> findall)
+end
+
+function selectColumns(df,typesel)
+
+    select(df, eltype.(eachcol(df)) |> typesel |> findall)
 end
 
 function onehot(carray::CategoricalArray)    
