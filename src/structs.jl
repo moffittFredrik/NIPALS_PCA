@@ -148,6 +148,9 @@ function selectColumns(df,typesel)
     select(df, eltype.(eachcol(df)) |> typesel |> findall)
 end
 
+```
+Get a onehot representation of a CategoricalArray
+```
 function onehot(carray::CategoricalArray)    
     lvls = carray |> levels
 
