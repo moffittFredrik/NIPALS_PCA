@@ -139,7 +139,7 @@ function predictY(xdataset::Dataset, W::Array{Float64,2}, P::Array{Float64,2}, C
 
     Xres[.~xmask] .= missing
 
-    return (;YpredVar,Xres)
+    return (YpredVar=YpredVar,Xres=Xres)
 end
 
 function setmissing(model::T, dataset::Dataset) where T <: MultivariateModel

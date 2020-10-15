@@ -31,7 +31,7 @@ function load_data(xfile,yfile,ycols::Array{Yvariable,1};idpair::Pair = 1=>:id) 
         ydf = ycontinous
     end
 
-    (;xdf,ydf)
+    (xdf=xdf,ydf=ydf)
 end
 
 function hasContinous(ycols)

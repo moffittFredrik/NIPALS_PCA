@@ -153,7 +153,7 @@ function onehot(carray::CategoricalArray)
 
     hots = [(carray .== lv) |> bvals -> convert(Array{Float64,1},bvals) for lv in lvls]
 
-    DataFrame((;zip(Symbol.(lvls), hots)...))
+    DataFrame(hots) |> v -> names!(v,Symbol.(lvls))
 end
 
 function predictLevel(carray::CategoricalArray,predMatrix::Array{Union{Missing, Float64},2})::Array{String,1}
