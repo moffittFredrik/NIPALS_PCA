@@ -54,7 +54,7 @@ function predict_xres(modelfile::String,xfile::String, outfile::String)
 
     YpredVar,Xres = predictY(preddataset,pls)
 
-    @pipe DataFrame(Xres)|> names!(_,Symbol.(preddataset.value_columns)) |> CSV.write(outfile,_)
+    @pipe DataFrame(Xres)|> rename!(_,Symbol.(preddataset.value_columns)) |> CSV.write(outfile,_)
 
 end
 

@@ -111,9 +111,9 @@ function savemodel(model::T, dataset::Dataset, name::String) where T <: Multivar
 
         foreach(fv -> file[fv[1]] = fv[2], zipped)
 
-        file["means"] = DataFrame(zip(dataset.value_columns, dataset.stdevs)) |> df -> names!(df, [:var,:stdev])
+        file["means"] = DataFrame(zip(dataset.value_columns, dataset.stdevs)) |> df -> rename!(df, [:var,:stdev])
 
-        file["stdevs"] = DataFrame(zip(dataset.value_columns, dataset.means)) |> df -> names!(df, [:var,:mean])
+        file["stdevs"] = DataFrame(zip(dataset.value_columns, dataset.means)) |> df -> rename!(df, [:var,:mean])
 
         close(file)
     end
@@ -156,7 +156,7 @@ function onehot(carray::CategoricalArray)
 
     hots = [(carray .== lv) |> bvals -> convert(Array{Float64,1},bvals) for lv in lvls]
 
-    DataFrame(hots) |> v -> names!(v,Symbol.(lvls))
+    DataFrame(hots) |> v -> rename!(v,Symbol.(lvls))
 end
 
 function predictLevel(carray::CategoricalArray,predMatrix::Array{Union{Missing, Float64},2})::Array{String,1}
