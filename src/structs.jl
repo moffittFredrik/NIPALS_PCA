@@ -37,13 +37,7 @@ end
 
 isnumcol(type)= type <: Union{Missing,Number}
 
-function parseDataFrame(df::AbstractDataFrame)
-
-    value_columns = names(df[:,eltype.(eachcol(df)) |> coltypes -> isnumcol.(coltypes)])
-    #value_columns = names(df[eltypes(df) .<: Union{Missing,Number}])
-
-    X = convert(Array{Union{Missing,Float64},2}, df[:,value_columns])
-
+function parseMatrix(X::Array{Union{Missing, Float64},2},value_columns::Array{String,1})
     var_means::Array{Float64,1} = [mean(skipmissing(col)) for col in eachcol(X) ]
     mean_mask = (!isnan).(var_means)
 
@@ -57,6 +51,16 @@ function parseDataFrame(df::AbstractDataFrame)
     xmask = (!ismissing).(Xtr)
 
     Dataset(Xtr, var_means, var_stdevs, value_columns, xmask, sum(xmask) > 0)
+end
+
+function parseDataFrame(df::AbstractDataFrame)
+
+    value_columns = names(df[:,eltype.(eachcol(df)) |> coltypes -> isnumcol.(coltypes)])
+    #value_columns = names(df[eltypes(df) .<: Union{Missing,Number}])
+
+    X = convert(Array{Union{Missing,Float64},2}, df[:,value_columns])
+
+    return parseMatrix(X,value_columns)
 end
 
 function normalize(dataset::Dataset; doscale::Bool=false, stdevs=dataset.stdevs, means=dataset.means)
