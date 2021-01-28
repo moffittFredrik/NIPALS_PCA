@@ -13,7 +13,7 @@ using Pipe
 
     x_df = CSV.File(joinpath(irisdir,"iris.csv"), header=false) |> DataFrame!
     select!(x_df, eltype.(eachcol(x_df)) |> coltypes -> isnumcol.(coltypes) |> findall)
-    xdataset = parseDataFrame(x_df) |> dataset -> normalize(dataset)
+    xdataset = parseDataFrame(x_df) |> normalize
 
     pca = calcPCA(xdataset, 3)
 

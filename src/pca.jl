@@ -135,6 +135,16 @@ function toarray(matrix::Array{Float64,3})
     reshape(matrix,(A,1,1))[:]   
 end
 
+"""
+$(FUNCTIONNAME)(dataset::Dataset, model::PCA)::NamedTuple
+
+    Calculates r2x, r2x_cum and eigenvalues for all components in PCA model
+
+# Examples
+```julia-repl
+julia> r2x,r2x_cum,eigenvalues = calcPCA(datset,model)
+```
+"""
 function calcVariances(dataset::Dataset, model::PCA)::NamedTuple
 
     bycomp = [1,2]

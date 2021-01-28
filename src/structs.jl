@@ -2,7 +2,12 @@ using DataFrames
 using Statistics
 using JLD2
 using CategoricalArrays
+using DocStringExtensions
 
+"""
+$(TYPEDEF)
+$(TYPEDFIELDS)
+"""
 struct Dataset
     X::Array{Union{Missing,Float64},2}
     means::Array{Float64,1}
@@ -14,11 +19,19 @@ end
 
 abstract type MultivariateModel end
 
+"""
+$(TYPEDEF)
+$(TYPEDFIELDS)
+"""
 struct PCA <: MultivariateModel
     T::DataFrame
     P::DataFrame
 end
 
+"""
+$(TYPEDEF)
+$(TYPEDFIELDS)
+"""
 struct PLS <: MultivariateModel
     T::DataFrame
     P::DataFrame
@@ -107,13 +120,19 @@ function normalizedata(X::Array{Union{Missing,Float64},2};normalize::Bool=false)
     Xtr[.~xmask] .= 0
 end
 
-function savemodel(model::T, dataset::Dataset, name::String) where T <: MultivariateModel
+
+"""
+$(FUNCTIONNAME)(model::T, dataset::Dataset, name::String) where T <: MultivariateModel
+
+    Save PCA or PLS model as JLD2 file
+"""
+function savemodel(model::T, dataset::Dataset, path::String) where T <: MultivariateModel
 
     values = fieldnames(T) |> fns -> getfield.(Ref(model), fns)
 
     zipped = zip(string.(fieldnames(T)), values)    
 
-    jldopen(name, "w") do file
+    jldopen(path, "w") do file
 
         file["modeltype"] = string(T)
 
@@ -127,6 +146,13 @@ function savemodel(model::T, dataset::Dataset, name::String) where T <: Multivar
     end
 end    
 
+"""
+$(FUNCTIONNAME)(path::String)::Tuple{MultivariateModel,Array{Float64,1},Array{Float64,1}}
+
+    Load PCA or PLS model from JLD2 file into a tuple containing the model, variable standard deviations from variable means from model calibration
+
+
+"""
 function loadmodel(path::String)::Tuple{MultivariateModel,Array{Float64,1},Array{Float64,1}}
 
     jldfile = jldopen(path, "r")

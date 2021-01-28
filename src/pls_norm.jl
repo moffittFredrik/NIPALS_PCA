@@ -1,5 +1,5 @@
 using ArgParse,Match
-using DataFrames,CSV,Pipe,CategoricalArrays,NIPALS_PCA
+using DataFrames,CSV,Pipe,CategoricalArrays
 
 struct Yvariable
     label::String
@@ -46,6 +46,12 @@ function todaframe(df,colname)
     @pipe onehot(df[:,colname]) |> insert!(_, 1, df.id, :id) 
 end
 
+
+"""
+$(FUNCTIONNAME)(modelfile::String,xfile::String, outfile::String)
+
+    Loads model from jld2 file, predicts using xfile and exports residual matrix into .csv file
+"""
 function predict_xres(modelfile::String,xfile::String, outfile::String)
     pls, stdevs, means = loadmodel(modelfile)
 
@@ -104,6 +110,15 @@ function splitArrayArgs(parsed_args,field)
     return []
 end
 
+"""
+$(FUNCTIONNAME)(x::DataFrame,y::DataFrame,A::Int64, modelfile::String)
+
+    Calibrates PLS model based on datatypes in DataFrame for y
+
+    Columns of type CategoricalArray is handled by one-hot precedure
+
+    The calibrated model is saved to specified locations
+"""
 function calibrate_model(x::DataFrame,y::DataFrame,A::Int64, modelfile::String)
     xdataset = x |> parseDataFrame |> normalize
     ydataset = y |> selectNumerical |>  parseDataFrame |> normalize
@@ -117,7 +132,7 @@ end
 
 function calibrate_model(parsed_args)
 
-    yvars::Array{Yvariable,1} = []
+    yvars::Array{Yvariable,1} = Array{Yvariable,1}()
 
     @pipe splitArrayArgs(parsed_args,"ycategorical") |> Yvariable.(_,CategoricalArray) |> append!(yvars,_)
 
@@ -138,6 +153,11 @@ function calibrate_model(parsed_args)
     end
 end
 
+"""
+$(FUNCTIONNAME)(model::T, dataset::Dataset, name::String) where T <: MultivariateModel
+
+    Save PCA or PLS model as JLD2 file
+"""
 function correct(parsed_args)
     xfile = parsed_args["xfile"]
     modelfile = parsed_args["modelfile"]
@@ -146,17 +166,3 @@ function correct(parsed_args)
 
     predict_xres(modelfile,xfile,outfile)    
 end
-
-function main()
-    parsed_args = parse_commandline()
-    parsed_args |> println
-
-    xfile = parsed_args["xfile"]
-
-    @match parsed_args["mode"] begin
-        "calibrate" => calibrate_model(parsed_args)
-        "correct" => correct(parsed_args)
-    end
-end
-
-main()
