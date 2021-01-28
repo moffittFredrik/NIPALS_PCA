@@ -2,9 +2,6 @@
 A Julia package for calculating PCA and PLS using the NIPALS implementation. Both models handles missing values
 
 <b>For more information open [documentation](./docs/NIPALS_PCA.jl.pdf) (CI/CD is currently failing due to SSL issue)</b><br> 
-
-The package contains data structures for models and datasets
-
 ## Installation
 In Julia add https://gitlab.moffitt.usf.edu:8000/Bios2Projects/NIPALS_PCA as [unregistered package](https://julialang.github.io/Pkg.jl/v1.1/managing-packages/)
 ```julia-repl
