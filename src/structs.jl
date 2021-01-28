@@ -27,6 +27,10 @@ struct PLS <: MultivariateModel
     U::DataFrame
 end
 
+function fillmissings(dataset::Dataset; fillvalue = 0.0)
+    dataset.X[.~dataset.xmask] .= fillvalue
+end
+
 function hasVariation(x)
     !isnan(x) && x > 0
 end 
@@ -128,8 +132,8 @@ function loadmodel(path::String)::Tuple{MultivariateModel,Array{Float64,1},Array
     jldfile = jldopen(path, "r")
 
     modeltype = jldfile["modeltype"]
-    stdevs = jldfile["stdevs"] |> df -> convert(Array{Float64,2}, df[[:mean]])[:]
-    means = jldfile["means"] |> df -> convert(Array{Float64,2}, df[[:stdev]])[:]
+    stdevs = jldfile["stdevs"] |> df -> convert(Array{Float64,2}, df[:,[:mean]])[:]
+    means = jldfile["means"] |> df -> convert(Array{Float64,2}, df[:,[:stdev]])[:]
 
     type::DataType =  modeltype == "PCA" ? PCA : PLS
 

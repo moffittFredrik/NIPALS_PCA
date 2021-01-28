@@ -43,7 +43,7 @@ function hasCategorical(ycols)
 end
 
 function todaframe(df,colname)
-    @pipe onehot(df[colname]) |> insert!(_, 1, df.id, :id) 
+    @pipe onehot(df[:,colname]) |> insert!(_, 1, df.id, :id) 
 end
 
 function predict_xres(modelfile::String,xfile::String, outfile::String)

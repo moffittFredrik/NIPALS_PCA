@@ -5,8 +5,7 @@ using Random
 using DocStringExtensions
 using JLD2
 using FileIO
-
-#include("structs.jl")
+using Pipe
 
 function nipals(X::Array{Union{Missing, Float64},2}, dataset::Dataset, t::Array{Union{Missing, Float64},1})
 
@@ -18,7 +17,6 @@ function nipals(X::Array{Union{Missing, Float64},2}, dataset::Dataset, t::Array{
         p ./= pcorr
         p[pcorr.==0].=0
     end
-
 
     p/=norm(p)
 
@@ -104,7 +102,7 @@ end
 
 function createTestMatrix(irisFile)
     df = CSV.File(irisFile,header=false) |> DataFrame!
-    values=convert(Array{Union{Missing, Float64},2},df[1:end-1])
+    values=convert(Array{Union{Missing, Float64},2},df[:,1:end-1])
 
     mask = convert(BitArray,[rand()<0.2 for i in 1:nrow(df), j in 1:(ncol(df)-1)])
 
@@ -114,9 +112,55 @@ function createTestMatrix(irisFile)
 
     mv_df = DataFrame(values)
 
-    insert!(mv_df, 1, df[end], :type)
+    insert!(mv_df, 1, df[:,end], :type)
     #mv_df[:type] = df[end]
 
     return mv_df
+
+end
+
+function xpred(t::Array{Float64,1},p::Array{Float64,1})
+    xpred = t*p'
+end
+
+function fill(matrix,dataset::Dataset;value::Float64=0.0)
+    matrix[.~dataset.xmask] .= 0
+
+    matrix
+end
+
+function toarray(matrix::Array{Float64,3})
+    A = size(matrix)[3]
+
+    reshape(matrix,(A,1,1))[:]   
+end
+
+function calcVariances(dataset::Dataset, model::PCA)::NamedTuple
+
+    bycomp = [1,2]
+
+    fillmissings(dataset)
+
+    T = model.T |> T-> convert(Matrix,T)
+    P = model.P |> P-> convert(Matrix,P)       
+
+    A = numcomps(model)
+
+    ssx_orig = sum(dataset.X.^2)
+
+    Xpreds::Array{Float64,3} = @pipe [ xpred(T[:,a],P[:,a]) for a in 1:A] |> 
+        fill.(_,Ref(dataset)) |> # fill missing values with zeroes
+        cat(_...,dims=3) # convert array of matrices to 3D matrix
+
+    explvar::Array{Float64,1} = @pipe sum(Xpreds.^2,dims=bycomp) |> toarray
+
+    ssx = @pipe sum((dataset.X .- Xpreds).^2,dims=bycomp) |> toarray
+
+    eigenvalues = explvar .* min(size(dataset.X)...) / 100
+        
+    r2x =(ssx_orig .- ssx) ./ ssx_orig
+    r2x_cum = cumsum(r2x)
+
+    (;r2x,r2x_cum,eigenvalues)
 
 end
