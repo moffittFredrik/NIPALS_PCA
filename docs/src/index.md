@@ -1,11 +1,26 @@
 # NIPALS_PCA
-A package for calculating PCA and PLS using the NIPALS implementation. Both models handles missing values
+A Julia package for calculating PCA and PLS using the NIPALS implementation. Both models handles missing values
 
 The package contains data structures for models and datasets
 
 ## Installation
 In Julia add https://gitlab.moffitt.usf.edu:8000/Bios2Projects/NIPALS_PCA as [unregistered package](https://julialang.github.io/Pkg.jl/v1.1/managing-packages/)
+```julia-repl
+using Pkg
+Pkg.add("https://gitlab.moffitt.usf.edu:8000/Bios2Projects/NIPALS_PCA")
+```
 
+## Running Julia REPL
+Julia can be started using 
+1. The base installation
+2. From Singularity container (in progress, details pending)
+3. Utilizing the downloaded folder as a local environment.
+
+To activate NIPALS_PCA as local environment
+```bash
+cd path/to/cloned/NIPALS_PCA
+julia --project=.
+```
 ## Loading package
 ```julia
 using NIPALS_PCA
@@ -13,33 +28,35 @@ using NIPALS_PCA
 
 ## Tutorial
 ### PCA modelling
-1. Load package
+From Julia REPL
+
+1)Load package
 ```julia
 using NIPALS_PCA
 ```
-2. Load dataset from .csv file to DataFrame
+2)Load dataset from .csv file to DataFrame
 ```julia
 x_df = loadIrisData()
 ```
-3. Create dataset and apply normalize to mean center data
+3)Create dataset and apply normalize to mean center data
 ```julia
 xdataset = parseDataFrame(x_df) |> normalize
 ``` 
-4. Calculate PCA model
+4)Calculate PCA model
 ```julia
 pca = calcPCA(xdataset, 3)
 ```
-5. Calculate variances for model
+5)Calculate variances for model
 ```julia
 calcVariances(xdataset,pca)
 ```
 
 ### PLS normalization
-The PLS normalization work flow can either be run from a script or from an interactive Julia session
+The PLS normalization workflow can either be run from a script or from an interactive Julia session. The default script can be find in src/scripts/plsnorm.jl
 
-#### run from script
+#### Run from script
 ```bash
-julia plsnorm.jl \
+julia src/scripts/plsnorm.jl \
 --xfile /path/to/xmatrix.txt \
 --yfile /path/to/ymatrix.txt \
 --ycategorical "colname" \
@@ -49,7 +66,7 @@ julia plsnorm.jl \
 --outfile output_file.csv
 ```
 
-#### run from interactive session
+#### Run from interactive session
 ```julia
 using NIPALS_PCA
 
@@ -62,14 +79,10 @@ calibrate_model(parsed_args)
 correct(parsed_args)
 ```
 
-To get help
+Get help
 ```bash
 julia plsnorm.jl --help
 ```
-#### Calibrate and save model
-
-#### Normalize data from saved model
-
 ### Structures
 ```@docs
 Dataset
@@ -93,9 +106,9 @@ savemodel
 
 #### PLS normalization
 ```@docs
-correct
-
 calibrate_model
+
+correct
 
 predict_xres
 ```

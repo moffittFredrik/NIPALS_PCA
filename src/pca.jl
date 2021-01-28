@@ -35,16 +35,16 @@ end
 export calcPCA
 
 """
-$(FUNCTIONNAME)(dataset::Dataset, comps::Int64; normalize::Bool = false)
+$(FUNCTIONNAME)(dataset::Dataset, comps::Int64)
 
     Calculates a PCA model
 
 # Examples
 ```julia
-julia> calcPCA(datset,3,normalize=true)
+julia> calcPCA(datset,3)
 ```
 """
-function calcPCA(dataset::Dataset, comps::Int64; normalize::Bool = false)::PCA
+function calcPCA(dataset::Dataset, comps::Int64)::PCA
 
     X::Array{Union{Missing, Float64},2} = dataset.X
 
@@ -106,14 +106,11 @@ function createTestMatrix(irisFile)
 
     mask = convert(BitArray,[rand()<0.2 for i in 1:nrow(df), j in 1:(ncol(df)-1)])
 
-    #mask = bitrand(rng,nrow(df),ncol(df)-1) |> (x->reshape(x,nrow(df),ncol(df)-1))
-
     values[mask] .= missing
 
     mv_df = DataFrame(values)
 
-    insert!(mv_df, 1, df[:,end], :type)
-    #mv_df[:type] = df[end]
+    insertcols!(mv_df, 1, :type=>df[:,end])
 
     return mv_df
 
