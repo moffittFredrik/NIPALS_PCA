@@ -26,6 +26,8 @@ julia --project=.
 using NIPALS_PCA
 ``` 
 
+## Example
+![getstarted](../img/gettingStarted.png)
 ## Tutorial
 ### PCA modelling
 From Julia REPL
