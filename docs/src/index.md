@@ -28,6 +28,14 @@ using NIPALS_PCA
 
 ## Example
 ![getstarted](../img/gettingStarted.png)
+
+## On cluster using Singularity
+(in progress, details pending)
+A prebundled singularity container for Julia can be accessed at /share/data2/applications/singularity_images/bbsrTools.sif
+```bash
+module load singularity/3.10
+sudo singularity run --app plsnorm -C -B ../data:/data  bbsrTools.sif [arguments]
+```
 ## Tutorial
 ### PCA modelling
 From Julia REPL
