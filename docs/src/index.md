@@ -30,11 +30,17 @@ using NIPALS_PCA
 ![getstarted](../img/gettingStarted.png)
 
 ## On cluster using Singularity
-(in progress, details pending)
 A prebundled singularity container for Julia can be accessed at /share/data2/applications/singularity_images/bbsrTools.sif
+
+-C, is required to utilize packages installed in the container. If this flag is not used, Julia will load packages from the users home directory 
+
+
+-B, binds folders to be accessible to the container
+
+
 ```bash
 module load singularity/3.10
-sudo singularity run --app plsnorm -C -B ../data:/data  bbsrTools.sif [arguments]
+sudo singularity run -C -B ../data:/data  bbsrTools.sif
 ```
 ## Tutorial
 ### PCA modelling
@@ -87,6 +93,24 @@ calibrate_model(parsed_args)
 
 #to correct
 correct(parsed_args)
+```
+
+#### Run on cluster using Singularity image
+The folder(s) used for reading and writing needs a Bind. In the example below<br> 
+<b>-B ../data/:/data</b> 
+<br>
+data will be accessible from the root level within the container. Multiple folders can be bound. 
+```bash
+module load singularity/3.10
+
+sudo singularity run --app plsnorm  -C -B ../data/:/data bbsrTools.sif \
+--xfile /data/xmatrix.txt \
+--yfile /data/ymatrix.txt \
+--ycategorical "colname" \
+--ycontinous "colname1;colname2" \
+--mode calibrate \
+--modelfile model.jld2 \
+--outfile output_file.csv
 ```
 
 Get help
