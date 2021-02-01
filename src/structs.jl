@@ -15,6 +15,7 @@ struct Dataset
     value_columns::Array{String,1}
     xmask::BitArray{2}
     mv::Bool
+    mvs::Array{Float64,1}
 end
 
 abstract type MultivariateModel end
@@ -52,9 +53,24 @@ function norm(v)
     sqrt(sum(v.^2))
 end
 
+function valueRange(array)
+    valrng = missing
+
+    try
+        valrng = maximum(skipmissing(array))-minimum(skipmissing(array)) 
+    catch
+        valrng = missing
+    end
+
+    valrng
+end
+
 isnumcol(type)= type <: Union{Missing,Number}
 
 function parseMatrix(X::Array{Union{Missing, Float64},2},value_columns::Array{String,1})
+
+    var_ranges = [valueRange(skipmissing(col)) for col in eachcol(dataset.X) ]
+
     var_means::Array{Float64,1} = [mean(skipmissing(col)) for col in eachcol(X) ]
     mean_mask = (!isnan).(var_means)
 
@@ -67,7 +83,9 @@ function parseMatrix(X::Array{Union{Missing, Float64},2},value_columns::Array{St
 
     xmask = (!ismissing).(Xtr)
 
-    Dataset(Xtr, var_means, var_stdevs, value_columns, xmask, sum(xmask) > 0)
+    mvs = sum(.~xmask,dims=1) |> values -> convert(Array{Float64},values) |> vs -> vs ./= size(X)[1]
+
+    Dataset(Xtr, var_means, var_stdevs, value_columns, xmask, sum(xmask) > 0, mvs)
 end
 
 function parseDataFrame(df::AbstractDataFrame)

@@ -1,6 +1,6 @@
 module NIPALS_PCA
 
-using DataFrames
+using DataFrames, JLD2, FileIO
 
 include("structs.jl")
 include("pca.jl")
@@ -13,6 +13,10 @@ function loadIrisData()::DataFrame
     irisdir = @pipe pathof(NIPALS_PCA) |> splitpath |> _[1:end-2] |> joinpath(_...,"test","data","iris")
 
     CSV.File(joinpath(irisdir,"IRIS.csv"), header=false) |> DataFrame!
+end
+
+function loadDataFrame(file::String,valuekey::String="df")
+    df=load(file,valuekey);    
 end
 
 export loadIrisData
