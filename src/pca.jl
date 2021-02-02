@@ -44,7 +44,7 @@ $(FUNCTIONNAME)(dataset::Dataset, comps::Int64)
 julia> calcPCA(datset,3)
 ```
 """
-function calcPCA(dataset::Dataset, comps::Int64)::PCA
+function calcPCA(dataset::Dataset, comps::Int64=3; dCrit = 1e-23, maxIter = 1000)::PCA
 
     X::Array{Union{Missing, Float64},2} = dataset.X
 
@@ -58,8 +58,8 @@ function calcPCA(dataset::Dataset, comps::Int64)::PCA
     # initialize by setting zeroes in missing values
     X[.~dataset.xmask] .= 0
 
-    dCrit = 1e-23
-    maxIter = 1000
+    #dCrit = 1e-23
+    #maxIter = 1000
 
     ssx_orig = sum(X.^2)
 

@@ -1,3 +1,4 @@
+using Pipe
 using DataFrames
 using Statistics
 using JLD2
@@ -16,6 +17,7 @@ struct Dataset
     xmask::BitArray{2}
     mv::Bool
     mvs::Array{Float64,1}
+    ranges::Array{Float64,1}
 end
 
 abstract type MultivariateModel end
@@ -39,6 +41,19 @@ struct PLS <: MultivariateModel
     C::DataFrame
     W::DataFrame
     U::DataFrame
+end
+
+function copydataset(dataset)::Dataset
+    Dataset(
+        copy(dataset.X),
+        copy(dataset.means),
+        copy(dataset.stdevs),
+        copy(dataset.value_columns),
+        copy(dataset.xmask),
+        dataset.mv,
+        copy(dataset.mvs),
+        copy(dataset.ranges)
+    )
 end
 
 function fillmissings(dataset::Dataset; fillvalue = 0.0)
@@ -69,7 +84,7 @@ isnumcol(type)= type <: Union{Missing,Number}
 
 function parseMatrix(X::Array{Union{Missing, Float64},2},value_columns::Array{String,1})
 
-    var_ranges = [valueRange(skipmissing(col)) for col in eachcol(dataset.X) ]
+    ranges = [valueRange(skipmissing(col)) for col in eachcol(X) ]
 
     var_means::Array{Float64,1} = [mean(skipmissing(col)) for col in eachcol(X) ]
     mean_mask = (!isnan).(var_means)
@@ -83,22 +98,59 @@ function parseMatrix(X::Array{Union{Missing, Float64},2},value_columns::Array{St
 
     xmask = (!ismissing).(Xtr)
 
-    mvs = sum(.~xmask,dims=1) |> values -> convert(Array{Float64},values) |> vs -> vs ./= size(X)[1]
+    mvs = sum(.~xmask,dims=1)[:] |> values -> convert(Array{Float64},values) |> vs -> vs ./= size(X)[1]
 
-    Dataset(Xtr, var_means, var_stdevs, value_columns, xmask, sum(xmask) > 0, mvs)
+    Dataset(Xtr, var_means, var_stdevs, value_columns, xmask, sum(.~xmask) > 0, mvs,ranges)
 end
 
 function parseDataFrame(df::AbstractDataFrame)
 
     value_columns = names(df[:,eltype.(eachcol(df)) |> coltypes -> isnumcol.(coltypes)])
-    #value_columns = names(df[eltypes(df) .<: Union{Missing,Number}])
 
     X = convert(Array{Union{Missing,Float64},2}, df[:,value_columns])
 
     return parseMatrix(X,value_columns)
 end
 
-function normalize(dataset::Dataset; doscale::Bool=false, stdevs=dataset.stdevs, means=dataset.means)
+function filterDataset(dataset::Dataset; filters=[])::Dataset
+    mask = filterVariables(dataset,filters=filters)
+
+    Dataset(
+        dataset.X[:,mask],
+        dataset.means[mask],
+        dataset.stdevs[mask],
+        dataset.value_columns[mask],
+        dataset.xmask[:,mask],
+        sum(.~(dataset.xmask[:,mask])) > 0,
+        dataset.mvs[mask],
+        dataset.ranges[mask]
+    )
+end
+
+function filterVariables(dataset::Dataset; filters=[])
+
+    allvars = createDefaultVariableMask(dataset)
+
+    varmask = @pipe [filter(dataset) for filter in filters] |> [allvars,_...] |> tomatrix |> m->all(m,dims=2) |> vec
+end
+
+function nobs(dataset::Dataset)
+    size(dataset.X,1)
+end
+
+function nvars(dataset::Dataset)
+    size(dataset.X,2)
+end
+
+function tomatrix(arrayOfArrays)
+    hcat(arrayOfArrays...)
+end
+
+function createDefaultVariableMask(dataset::Dataset)::BitArray{1}
+    BitArray{1}(ones(nvars(dataset)))
+end
+
+function normalize!(dataset::Dataset; doscale::Bool=false, stdevs=dataset.stdevs, means=dataset.means)
 
     mean_mask = (!isnan).(dataset.means)
     std_mask = hasVariation.(dataset.stdevs)
@@ -114,6 +166,13 @@ function normalize(dataset::Dataset; doscale::Bool=false, stdevs=dataset.stdevs,
     dataset.X[.~dataset.xmask] .= 0
 
     dataset
+end
+
+function normalize(dataset::Dataset; doscale::Bool=false, stdevs=dataset.stdevs, means=dataset.means)
+
+    dscopy = copydataset(dataset)
+
+    normalize!(dscopy)
 end
 
 function normalizedata(X::Array{Union{Missing,Float64},2};normalize::Bool=false)

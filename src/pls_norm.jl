@@ -55,50 +55,12 @@ function predict_xres(modelfile::String,xfile::String, outfile::String)
     pls, stdevs, means = loadmodel(modelfile)
 
     xdf = CSV.File(xfile) |> DataFrame!
-    preddataset = @pipe parseDataFrame(xdf) |> normalize(_,doscale=true,stdevs=_.stdevs,means=_.means)
+    preddataset = @pipe parseDataFrame(xdf) |> normalize!(_,doscale=true,stdevs=_.stdevs,means=_.means)
 
     YpredVar,Xres = predictY(preddataset,pls)
 
     @pipe DataFrame(Xres)|> rename!(_,Symbol.(preddataset.value_columns)) |> CSV.write(outfile,_)
 
-end
-
-function parse_commandline()
-    s = ArgParseSettings()
-
-    @add_arg_table s begin
-
-        "--xfile"
-            help = "x data"  
-            required = true  
-
-        "--yfile"
-            help = "metadata.txt"
-
-        "--ycontinous"
-            help = "y variable names"
-
-        "--ycategorical"
-            help = "y variable names"
-
-        "--mode"
-            help = "calibrate or correct"
-            required = true
-
-        "--modelfile"
-            help = "name of model file to read or write"
-            required = true
-
-        "--components", "-A"
-            help = "specify the number of components to use"
-            arg_type = Int
-            default = 3
-
-         "--outfile", "-o"
-            help = "output corrected data file name.txt"
-    end
-
-    return parse_args(s)
 end
 
 function splitArrayArgs(parsed_args,field)

@@ -24,7 +24,8 @@ export loadIrisData
 #structs
 export Dataset, PCA, PLS
 
-export calcPCA, calcPLS, Dataset, parseDataFrame, parseMatrix, normalize,savemodel,loadmodel,predictY,crossvalidate, selectNumerical, selectColumns,onehot,predictLevel,calcVariances
+export calcPCA, calcPLS, Dataset, parseDataFrame, parseMatrix, normalize, normalize!, savemodel,loadmodel,predictY,crossvalidate, selectNumerical, selectColumns,onehot,predictLevel,calcVariances
+export filterDataset
 
 # pls norm
 export correct,calibrate_model,predict_xres
