@@ -40,7 +40,7 @@ A prebundled singularity container for Julia can be accessed at /share/data2/app
 
 ```bash
 module load singularity/3.10
-sudo singularity run -C -B ../data:/data  bbsrTools.sif
+singularity run -C -B ../data:/data  bbsrTools.sif
 ```
 ## Tutorial
 ### PCA modelling
@@ -103,7 +103,7 @@ data will be accessible from the root level within the container. Multiple folde
 ```bash
 module load singularity/3.10
 
-sudo singularity run --app plsnorm  -C -B ../data/:/data bbsrTools.sif \
+singularity run --app plsnorm  -C -B ../data/:/data bbsrTools.sif \
 --xfile /data/xmatrix.txt \
 --yfile /data/ymatrix.txt \
 --ycategorical "colname" \

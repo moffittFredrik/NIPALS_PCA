@@ -14,12 +14,12 @@ function loadIrisData()::DataFrame
 
     CSV.File(joinpath(irisdir,"IRIS.csv"), header=false) |> DataFrame!
 end
+export loadIrisData
 
 function loadDataFrame(file::String,valuekey::String="df")
     df=load(file,valuekey);    
 end
-
-export loadIrisData
+export loadDataFrame
 
 #structs
 export Dataset, PCA, PLS
