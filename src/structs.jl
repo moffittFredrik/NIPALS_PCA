@@ -94,7 +94,8 @@ function parseMatrix(X::Array{Union{Missing, Float64},2},value_columns::Array{St
 
     inc_mask = mean_mask .& std_mask
 
-    Xtr = X[:,inc_mask]
+    #Xtr = X[:,inc_mask]
+    Xtr = X[:,:]
 
     xmask = (!ismissing).(Xtr)
 
@@ -103,13 +104,13 @@ function parseMatrix(X::Array{Union{Missing, Float64},2},value_columns::Array{St
     Dataset(Xtr, var_means, var_stdevs, value_columns, xmask, sum(.~xmask) > 0, mvs,ranges)
 end
 
-function parseDataFrame(df::AbstractDataFrame)
+function parseDataFrame(df::AbstractDataFrame; filters=[dataset-> .~isnan.(dataset.means)])::Dataset
 
     value_columns = names(df[:,eltype.(eachcol(df)) |> coltypes -> isnumcol.(coltypes)])
 
     X = convert(Array{Union{Missing,Float64},2}, df[:,value_columns])
 
-    return parseMatrix(X,value_columns)
+    return parseMatrix(X,value_columns) |> ds -> filterDataset(ds,filters=filters)
 end
 
 function filterDataset(dataset::Dataset; filters=[])::Dataset
@@ -152,8 +153,8 @@ end
 
 function normalize!(dataset::Dataset; doscale::Bool=false, stdevs=dataset.stdevs, means=dataset.means)
 
-    mean_mask = (!isnan).(dataset.means)
-    std_mask = hasVariation.(dataset.stdevs)
+    mean_mask = (!isnan).(means)
+    std_mask = hasVariation.(stdevs)
 
     inc_mask = mean_mask .& std_mask
 
@@ -230,13 +231,15 @@ $(FUNCTIONNAME)(path::String)::Tuple{MultivariateModel,Array{Float64,1},Array{Fl
 
 
 """
-function loadmodel(path::String)::Tuple{MultivariateModel,Array{Float64,1},Array{Float64,1}}
+function loadmodel(modelfile::String)::Tuple{MultivariateModel,Array{Float64,1},Array{Float64,1},Array{String,1}}
 
-    jldfile = jldopen(path, "r")
+    jldfile = jldopen(modelfile, "r")
 
     modeltype = jldfile["modeltype"]
     stdevs = jldfile["stdevs"] |> df -> convert(Array{Float64,2}, df[:,[:mean]])[:]
     means = jldfile["means"] |> df -> convert(Array{Float64,2}, df[:,[:stdev]])[:]
+
+    variables = jldfile["means"][:,:var]
 
     type::DataType =  modeltype == "PCA" ? PCA : PLS
 
@@ -244,7 +247,7 @@ function loadmodel(path::String)::Tuple{MultivariateModel,Array{Float64,1},Array
 
     close(jldfile)
 
-    type(values...),stdevs,means
+    type(values...),stdevs,means,variables
 end
 
 function selectNumerical(df)

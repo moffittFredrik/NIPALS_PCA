@@ -101,7 +101,7 @@ function tryparsem(T, str)
 end   
 
 function createTestMatrix(irisFile)
-    df = CSV.File(irisFile,header=false) |> DataFrame!
+    df = CSV.File(irisFile,header=false) |> DataFrame
     values=convert(Array{Union{Missing, Float64},2},df[:,1:end-1])
 
     mask = convert(BitArray,[rand()<0.2 for i in 1:nrow(df), j in 1:(ncol(df)-1)])

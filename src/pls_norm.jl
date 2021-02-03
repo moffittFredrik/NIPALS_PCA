@@ -6,44 +6,44 @@ struct Yvariable
     valtype::Type
 end
 
-function load_data(xfile,yfile,ycols::Array{Yvariable,1};idpair::Pair = 1=>:id) where T <: String
-    xrawdf = CSV.File(xfile) |> DataFrame! |> df -> rename(df,idpair)
-    yrawdf = @pipe CSV.File(yfile) |> DataFrame! |> df -> rename(df,idpair) |> df -> select(df,["id",getfield.(ycols,:label)...]) 
+function load_data(xfile, yfile, ycols::Array{Yvariable,1};idpair::Pair=1 => :id) where T <: String
+    xrawdf = CSV.File(xfile) |> DataFrame |> df -> rename(df, idpair)
+    yrawdf = @pipe CSV.File(yfile) |> DataFrame |> df -> rename(df, idpair) |> df -> select(df, ["id",getfield.(ycols, :label)...]) 
     
-    noncatlabels::Array{String,1} = @pipe ycols |> filter(yc->yc.valtype != CategoricalArray,_) |> getfield.(_,:label)
-    categorical!(yrawdf,Not(["id",noncatlabels...]))
+    noncatlabels::Array{String,1} = @pipe ycols |> filter(yc -> yc.valtype != CategoricalArray, _) |> getfield.(_, :label)
+    categorical!(yrawdf, Not(["id",noncatlabels...]))
 
-    merged_df = innerjoin(xrawdf,yrawdf,on=:id)
+    merged_df = innerjoin(xrawdf, yrawdf, on=:id)
 
-    xdf = merged_df |> df -> select(df,Not(getfield.(ycols,:label)))|> selectNumerical
+    xdf = merged_df |> df -> select(df, Not(getfield.(ycols, :label))) |> selectNumerical
 
-    continousNames = selectColumns(yrawdf,coltypes -> coltypes .== Float64) |> names
+    continousNames = selectColumns(yrawdf, coltypes -> coltypes .== Float64) |> names
 
-    ycontinous = select(yrawdf,["id",continousNames...])
-    ycategoricals = @pipe selectColumns(yrawdf,coltypes -> coltypes .<: CategoricalValue) |> names |> todaframe.(Ref(yrawdf),_)
+    ycontinous = select(yrawdf, ["id",continousNames...])
+    ycategoricals = @pipe selectColumns(yrawdf, coltypes -> coltypes .<: CategoricalValue) |> names |> todaframe.(Ref(yrawdf), _)
 
-    ydf=undef
+    ydf = undef
     if hasCategorical(ycols) && hasContinous(ycols)
-        ydf = innerjoin(ycontinous,ycategoricals...,on=:id)
+        ydf = innerjoin(ycontinous, ycategoricals..., on=:id)
     elseif hasCategorical(ycols)
         ydf = ycategoricals |> first
     else
         ydf = ycontinous
     end
 
-    (xdf=xdf,ydf=ydf)
+    (xdf = xdf, ydf = ydf)
 end
 
 function hasContinous(ycols)
-    filter(ycol->ycol.valtype <: Number,ycols) |> !isempty
+    filter(ycol -> ycol.valtype <: Number, ycols) |> !isempty
 end
 
 function hasCategorical(ycols)
-    filter(ycol->ycol.valtype == CategoricalArray,ycols) |> !isempty
+    filter(ycol -> ycol.valtype == CategoricalArray, ycols) |> !isempty
 end
 
-function todaframe(df,colname)
-    @pipe onehot(df[:,colname]) |> insertcols!(_, 1, :id=>df[:,:id]) 
+function todaframe(df, colname)
+    @pipe onehot(df[:,colname]) |> insertcols!(_, 1, :id => df[:,:id]) 
 end
 
 """
@@ -51,21 +51,30 @@ $(FUNCTIONNAME)(modelfile::String,xfile::String, outfile::String)
 
     Loads model from jld2 file, predicts using xfile and exports residual matrix into .csv file
 """
-function predict_xres(modelfile::String,xfile::String, outfile::String)
-    pls, stdevs, means = loadmodel(modelfile)
+function predict_xres(modelfile::String, xfile::String, outfile::String)::DataFrame
+    pls, stdevs, means, modelvariables = loadmodel(modelfile)
 
-    xdf = CSV.File(xfile) |> DataFrame!
-    preddataset = @pipe parseDataFrame(xdf) |> normalize!(_,doscale=true,stdevs=_.stdevs,means=_.means)
+    outfileext = splitext(outfile)|> last 
+    delim = outfileext == ".csv" ? "," : "\t"
 
-    YpredVar,Xres = predictY(preddataset,pls)
+    xdf = CSV.File(xfile) |> DataFrame
+    preddataset = @pipe xdf |>
+        select(_,Symbol.(modelvariables))|>
+        parseDataFrame(_) |> 
+        normalize!(_, doscale=true, stdevs=stdevs, means=means)
 
-    @pipe DataFrame(Xres)|> rename!(_,Symbol.(preddataset.value_columns)) |> CSV.write(outfile,_)
+    YpredVar, Xres = predictY(preddataset, pls)
 
+    outdf::DataFrame =   @pipe DataFrame(Xres) |> rename!(_, Symbol.(preddataset.value_columns)) |> hcat(xdf[:,[1]],_) 
+
+    CSV.write(outfile, outdf, delim = delim)
+
+    outdf
 end
 
-function splitArrayArgs(parsed_args,field)
+function splitArrayArgs(parsed_args, field)
     if !isnothing(parsed_args[field])
-        return split(parsed_args[field],";") |> a->convert(Array{String,1},a) |> strarr -> filter(str->length(str) >1 ,strarr)
+        return split(parsed_args[field], ";") |> a -> convert(Array{String,1}, a) |> strarr -> filter(str -> length(str) > 1, strarr)
     end
 
     return []
@@ -80,13 +89,24 @@ $(FUNCTIONNAME)(x::DataFrame,y::DataFrame,A::Int64, modelfile::String)
 
     The calibrated model is saved to specified locations
 """
-function calibrate_model(x::DataFrame,y::DataFrame,A::Int64, modelfile::String)
-    xdataset = x |> parseDataFrame |> normalize
-    ydataset = y |> selectNumerical |>  parseDataFrame |> normalize
+function calibrate_model(xdf::DataFrame, ydf::DataFrame, A::Int64, modelfile::String)
 
-    pls = calcPLS(xdataset,ydataset,A)
+    mvfilter = [dataset -> dataset.mvs .< 0.25]
 
-    savemodel(pls,xdataset,modelfile)
+    xdataset = @pipe xdf |> 
+        parseDataFrame |> 
+        filterDataset(_, filters=mvfilter) |> 
+        normalize
+
+    ydataset = @pipe ydf |> 
+        selectNumerical |> 
+        parseDataFrame |> 
+        filterDataset(_, filters=mvfilter) |> 
+        normalize
+
+    pls = calcPLS(xdataset, ydataset, A)
+
+    savemodel(pls, xdataset, modelfile)
 
     pls
 end
@@ -105,9 +125,9 @@ function calibrate_model(parsed_args::Dict{String,Any})::MultivariateModel
 
     yvars::Array{Yvariable,1} = Array{Yvariable,1}()
 
-    @pipe splitArrayArgs(parsed_args,"ycategorical") |> Yvariable.(_,CategoricalArray) |> append!(yvars,_)
+    @pipe splitArrayArgs(parsed_args, "ycategorical") |> Yvariable.(_, CategoricalArray) |> append!(yvars, _)
 
-    @pipe splitArrayArgs(parsed_args,"ycontinous") |> Yvariable.(_,Float64) |> append!(yvars,_)
+    @pipe splitArrayArgs(parsed_args, "ycontinous") |> Yvariable.(_, Float64) |> append!(yvars, _)
 
     yvars |> println
 
@@ -118,9 +138,9 @@ function calibrate_model(parsed_args::Dict{String,Any})::MultivariateModel
 
         A = parsed_args["components"]
 
-        xdf,ydf = load_data(xfile,yfile,yvars)
+        xdf, ydf = load_data(xfile, yfile, yvars)
 
-        calibrate_model(xdf,ydf,A,modelfile)
+        calibrate_model(xdf, ydf, A, modelfile)
     end
 end
 
@@ -134,6 +154,5 @@ function correct(parsed_args)
     modelfile = parsed_args["modelfile"]
     outfile = parsed_args["outfile"]
 
-
-    predict_xres(modelfile,xfile,outfile)    
+    predict_xres(modelfile, xfile, outfile)    
 end
