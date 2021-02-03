@@ -91,7 +91,17 @@ function calibrate_model(x::DataFrame,y::DataFrame,A::Int64, modelfile::String)
     pls
 end
 
-function calibrate_model(parsed_args)
+
+"""
+$(FUNCTIONNAME)(parsed_args::Dict{String,Any})
+
+    Calibrates PLS model based on datatypes in DataFrame for y
+
+    Columns of type CategoricalArray is handled by one-hot precedure
+
+    The calibrated model is saved to specified locations
+"""
+function calibrate_model(parsed_args::Dict{String,Any})::MultivariateModel
 
     yvars::Array{Yvariable,1} = Array{Yvariable,1}()
 

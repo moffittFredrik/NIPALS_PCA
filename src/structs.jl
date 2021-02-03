@@ -69,12 +69,12 @@ function norm(v)
 end
 
 function valueRange(array)
-    valrng = missing
+    valrng = NaN
 
     try
         valrng = maximum(skipmissing(array))-minimum(skipmissing(array)) 
     catch
-        valrng = missing
+        valrng = NaN
     end
 
     valrng

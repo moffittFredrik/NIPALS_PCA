@@ -35,7 +35,7 @@ end
 export calcPCA
 
 """
-$(FUNCTIONNAME)(dataset::Dataset, comps::Int64)
+$(FUNCTIONNAME)(dataset::Dataset, comps::Int64=3; dCrit = 1e-23, maxIter = 1000)::PCA
 
     Calculates a PCA model
 
