@@ -35,12 +35,19 @@ A prebundled singularity container for Julia can be accessed at /share/data2/app
 -C, is required to utilize packages installed in the container. If this flag is not used, Julia will load packages from the users home directory 
 
 
--B, binds folders to be accessible to the container
+-B, binds folders to be accessible to the container. Repeated -B flags can be entered for multiple binds
 
 
 ```bash
 module load singularity/3.10
-singularity run -C -B ../data:/data  bbsrTools.sif
+singularity run -C -B ../data:/data  path/to/bbsrJuliaTools2.sif
+```
+
+or if running script
+
+```bash
+module load singularity/3.10
+singularity run -C -B ../data:/data  path/to/bbsrJuliaTools2.sif myScript.jl args
 ```
 ## Tutorial
 ### PCA modelling
@@ -103,7 +110,7 @@ data will be accessible from the root level within the container. Multiple folde
 ```bash
 module load singularity/3.10
 
-singularity run --app plsnorm  -C -B ../data/:/data bbsrTools.sif \
+singularity run --app plsnorm  -C -B ../data/:/data bbsrJuliaTools2.sif \
 --xfile /data/xmatrix.txt \
 --yfile /data/ymatrix.txt \
 --ycategorical "colname" \
