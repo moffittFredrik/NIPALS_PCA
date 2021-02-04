@@ -1,12 +1,6 @@
 using ArgParse,Match
 using NIPALS_PCA
 
-#==
-julia --project=. src/scripts/plsnorm.jl --xfile me \
---yfile ye
-==#
-
-
 function parse_commandline()
     s = ArgParseSettings()
 
@@ -37,6 +31,11 @@ function parse_commandline()
             help = "specify the number of components to use"
             arg_type = Int
             default = 3
+
+        "--mvcutoff"
+            help = "cutoff for excluding variables from modelling"
+            arg_type = Float64
+            default = 0.25
 
          "--outfile", "-o"
             help = "output corrected data filename"

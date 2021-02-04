@@ -81,27 +81,27 @@ function splitArrayArgs(parsed_args, field)
 end
 
 """
-$(FUNCTIONNAME)(x::DataFrame,y::DataFrame,A::Int64, modelfile::String)
+$(FUNCTIONNAME)(xdf::DataFrame, ydf::DataFrame, A::Int64, modelfile::String; filters = [dataset -> dataset.mvs .< 0.25])
 
     Calibrates PLS model based on datatypes in DataFrame for y
 
     Columns of type CategoricalArray is handled by one-hot precedure
 
     The calibrated model is saved to specified locations
-"""
-function calibrate_model(xdf::DataFrame, ydf::DataFrame, A::Int64, modelfile::String)
 
-    mvfilter = [dataset -> dataset.mvs .< 0.25]
+    Variables with more than 25% missing values are excluded by default
+"""
+function calibrate_model(xdf::DataFrame, ydf::DataFrame, A::Int64, modelfile::String; filters = [dataset -> dataset.mvs .< 0.25])
 
     xdataset = @pipe xdf |> 
         parseDataFrame |> 
-        filterDataset(_, filters=mvfilter) |> 
+        filterDataset(_, filters=filters) |> 
         normalize
 
     ydataset = @pipe ydf |> 
         selectNumerical |> 
         parseDataFrame |> 
-        filterDataset(_, filters=mvfilter) |> 
+        filterDataset(_, filters=filters) |> 
         normalize
 
     pls = calcPLS(xdataset, ydataset, A)
@@ -123,6 +123,10 @@ $(FUNCTIONNAME)(parsed_args::Dict{String,Any})
 """
 function calibrate_model(parsed_args::Dict{String,Any})::MultivariateModel
 
+    mvcutoff = parsed_args["mvcutoff"]
+
+    varfilters = [dataset -> dataset.mvs .< mvcutoff]
+
     yvars::Array{Yvariable,1} = Array{Yvariable,1}()
 
     @pipe splitArrayArgs(parsed_args, "ycategorical") |> Yvariable.(_, CategoricalArray) |> append!(yvars, _)
@@ -140,7 +144,7 @@ function calibrate_model(parsed_args::Dict{String,Any})::MultivariateModel
 
         xdf, ydf = load_data(xfile, yfile, yvars)
 
-        calibrate_model(xdf, ydf, A, modelfile)
+        calibrate_model(xdf, ydf, A, modelfile,filters=varfilters)
     end
 end
 
