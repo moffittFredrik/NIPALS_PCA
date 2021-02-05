@@ -33,12 +33,12 @@ function parse_commandline()
             default = 3
 
         "--mvcutoff"
-            help = "cutoff for excluding variables from modelling. Values with missingness > mvcutoff gets excluded"
+            help = "cutoff for excluding variables from modelling. Values with missingness <= mvcutoff is gets included"
             arg_type = Float64
             default = 0.25
 
         "--minvalues"
-            help = "the number of values that a variable needs to have to not be excluded"
+            help = "the number of values that a variable needs to have to not be excluded, numvalues >= minvalues gets included"
             arg_type = Int
             default = 5
 

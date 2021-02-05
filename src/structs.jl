@@ -17,6 +17,7 @@ struct Dataset
     xmask::BitArray{2}
     mv::Bool
     mvs::Array{Float64,1}
+    varvalues::Array{Int64,1}
     ranges::Array{Float64,1}
 end
 
@@ -52,6 +53,7 @@ function copydataset(dataset)::Dataset
         copy(dataset.xmask),
         dataset.mv,
         copy(dataset.mvs),
+        copy(dataset.varvalues),
         copy(dataset.ranges)
     )
 end
@@ -99,9 +101,11 @@ function parseMatrix(X::Array{Union{Missing, Float64},2},value_columns::Array{St
 
     xmask = (!ismissing).(Xtr)
 
-    mvs = sum(.~xmask,dims=1)[:] |> values -> convert(Array{Float64},values) |> vs -> vs ./= size(X)[1]
+    varvalues = sum(xmask,dims=1)[:]
 
-    Dataset(Xtr, var_means, var_stdevs, value_columns, xmask, sum(.~xmask) > 0, mvs,ranges)
+    mvs = 1 .- (varvalues ./ size(X,1))
+
+    Dataset(Xtr, var_means, var_stdevs, value_columns, xmask, sum(.~xmask) > 0, mvs, varvalues,ranges)
 end
 
 function parseDataFrame(df::AbstractDataFrame; filters=[dataset-> .~isnan.(dataset.means)])::Dataset
@@ -124,6 +128,7 @@ function filterDataset(dataset::Dataset; filters=[])::Dataset
         dataset.xmask[:,mask],
         sum(.~(dataset.xmask[:,mask])) > 0,
         dataset.mvs[mask],
+        dataset.varvalues[mask],
         dataset.ranges[mask]
     )
 end

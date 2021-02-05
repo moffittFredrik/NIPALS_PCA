@@ -124,8 +124,9 @@ $(FUNCTIONNAME)(parsed_args::Dict{String,Any})
 function calibrate_model(parsed_args::Dict{String,Any})::MultivariateModel
 
     mvcutoff = parsed_args["mvcutoff"]
+    minvalues = parsed_args["minvalues"]
 
-    varfilters = [dataset -> dataset.mvs .< mvcutoff]
+    varfilters = [dataset -> dataset.mvs .<= mvcutoff, dataset -> dataset.varvalues .>= minvalues]
 
     yvars::Array{Yvariable,1} = Array{Yvariable,1}()
 
