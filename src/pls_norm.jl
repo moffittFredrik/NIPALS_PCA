@@ -15,9 +15,10 @@ function load_data(xfile, yfile, ycols::Array{Yvariable,1};idpair::Pair=1 => :id
 
     merged_df = innerjoin(xrawdf, yrawdf, on=:id)
 
-    xdf = merged_df |> df -> select(df, Not(getfield.(ycols, :label))) |> selectNumerical
+    xdf = select(merged_df,names(xrawdf)) |> selectNumerical
+    yrawdf = select(merged_df,names(yrawdf))
 
-    continousNames = selectColumns(yrawdf, coltypes -> coltypes .== Float64) |> names
+    continousNames = selectNumerical(yrawdf) |> names
 
     ycontinous = select(yrawdf, ["id",continousNames...])
     ycategoricals = @pipe selectColumns(yrawdf, coltypes -> coltypes .<: CategoricalValue) |> names |> todaframe.(Ref(yrawdf), _)
@@ -92,25 +93,44 @@ $(FUNCTIONNAME)(xdf::DataFrame, ydf::DataFrame, A::Int64, modelfile::String; fil
     Variables with more than 25% missing values are excluded by default
 """
 function calibrate_model(xdf::DataFrame, ydf::DataFrame, A::Int64, modelfile::String; filters = [dataset -> dataset.mvs .< 0.25])
+    
+    # allow some missingness in x data
+    xobsfilters = [ds -> calcObsMissingValues(ds) .<= 0.5]
 
-    xdataset = @pipe xdf |> 
-        parseDataFrame |> 
-        filterDataset(_, filters=filters) |> 
-        normalize
+    # do not allow any missing values observations in y dataset
+    yobsfilters = [ds -> calcObsMissingValues(ds) .== 0]
 
-    ydataset = @pipe ydf |> 
-        selectNumerical |> 
-        parseDataFrame |> 
-        filterDataset(_, filters=filters) |> 
-        normalize
+    # parse datasets to dataframes
+    xdataset = xdf |> parseDataFrame
+    ydataset = ydf |> parseDataFrame
 
+    # filter datasets for sample missingness
+    xobsmask = filterObservations(xdataset,filters=xobsfilters)
+    yobsmask = filterObservations(ydataset,filters=yobsfilters)
+
+    # check overlap between datasets for inclusion of observations
+    obsmask = xobsmask .& yobsmask
+
+    # filter variables for both datasets using the same filter list
+    xvarmask = filterVariables(xdataset,filters=filters)
+    yvarmask = filterVariables(ydataset,filters=filters)
+
+    # copy datasets from filter masks 
+    xdataset = copydataset(xdataset,obsmask,xvarmask) |> normalize
+    ydataset = copydataset(ydataset,obsmask,yvarmask) |> normalize
+
+    # calculate PLS model
     pls = calcPLS(xdataset, ydataset, A)
 
+    # save PLS model to disk
     savemodel(pls, xdataset, modelfile)
 
     pls
 end
 
+function mergedatasets()
+
+end
 
 """
 $(FUNCTIONNAME)(parsed_args::Dict{String,Any})

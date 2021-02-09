@@ -58,6 +58,20 @@ function copydataset(dataset)::Dataset
     )
 end
 
+function copydataset(dataset,obsmask::BitArray{1}, varmask::BitArray{1})::Dataset
+    Dataset(
+        dataset.X[obsmask,varmask],
+        dataset.means[varmask],
+        dataset.stdevs[varmask],
+        dataset.value_columns[varmask],
+        dataset.xmask[obsmask,varmask],
+        dataset.mv,
+        dataset.mvs[varmask],
+        dataset.varvalues[varmask],
+        dataset.ranges[varmask]
+    )
+end
+
 function fillmissings(dataset::Dataset; fillvalue = 0.0)
     dataset.X[.~dataset.xmask] .= fillvalue
 end
@@ -117,16 +131,34 @@ function parseDataFrame(df::AbstractDataFrame; filters=[dataset-> .~isnan.(datas
     return parseMatrix(X,value_columns) |> ds -> filterDataset(ds,filters=filters)
 end
 
-function filterDataset(dataset::Dataset; filters=[])::Dataset
+function calcObsMissingValues(dataset::Dataset)
+    calcMissingValues(dataset.xmask,2)
+end
+
+function calcObsMissingValues(mask::BitArray{2})
+    calcMissingValues(mask,2)
+end
+
+function calcVarMissingValues(mask::BitArray{2})
+    calcMissingValues(mask,1)
+end
+
+function calcMissingValues(mask::BitArray{2}, dim)
+    sum(.~mask,dims=dim) ./ size(mask,dim)
+end    
+
+function filterDataset(dataset::Dataset; filters=[], obsfilters=[])::Dataset
     mask = filterVariables(dataset,filters=filters)
 
+    obsmask = filterObservations(dataset,filters=obsfilters)
+
     Dataset(
-        dataset.X[:,mask],
+        dataset.X[obsmask,mask],
         dataset.means[mask],
         dataset.stdevs[mask],
         dataset.value_columns[mask],
-        dataset.xmask[:,mask],
-        sum(.~(dataset.xmask[:,mask])) > 0,
+        dataset.xmask[obsmask,mask],
+        sum(.~(dataset.xmask[obsmask,mask])) > 0,
         dataset.mvs[mask],
         dataset.varvalues[mask],
         dataset.ranges[mask]
@@ -135,9 +167,16 @@ end
 
 function filterVariables(dataset::Dataset; filters=[])
 
-    allvars = createDefaultVariableMask(dataset)
+    allvariables = allvars(dataset)
 
-    varmask = @pipe [filter(dataset) for filter in filters] |> [allvars,_...] |> tomatrix |> m->all(m,dims=2) |> vec
+    varmask = @pipe [filter(dataset) for filter in filters] |> [allvariables,_...] |> tomatrix |> m->all(m,dims=2) |> vec
+end
+
+function filterObservations(dataset::Dataset; filters=[])
+
+    allobservations = allobs(dataset)
+
+    varmask = @pipe [filter(dataset) for filter in filters] |> [allobservations,_...] |> tomatrix |> m->all(m,dims=2) |> vec
 end
 
 function nobs(dataset::Dataset)
@@ -152,8 +191,12 @@ function tomatrix(arrayOfArrays)
     hcat(arrayOfArrays...)
 end
 
-function createDefaultVariableMask(dataset::Dataset)::BitArray{1}
+function allvars(dataset::Dataset)::BitArray{1}
     BitArray{1}(ones(nvars(dataset)))
+end
+
+function allobs(dataset::Dataset)::BitArray{1}
+    BitArray{1}(ones(nobs(dataset)))
 end
 
 function normalize!(dataset::Dataset; doscale::Bool=false, stdevs=dataset.stdevs, means=dataset.means)
@@ -221,9 +264,9 @@ function savemodel(model::T, dataset::Dataset, path::String) where T <: Multivar
 
         foreach(fv -> file[fv[1]] = fv[2], zipped)
 
-        file["means"] = DataFrame(zip(dataset.value_columns, dataset.stdevs)) |> df -> rename!(df, [:var,:stdev])
+        file["means"] = DataFrame(zip(dataset.value_columns, dataset.means)) |> df -> rename!(df, [:var,:mean])
 
-        file["stdevs"] = DataFrame(zip(dataset.value_columns, dataset.means)) |> df -> rename!(df, [:var,:mean])
+        file["stdevs"] = DataFrame(zip(dataset.value_columns, dataset.stdevs)) |> df -> rename!(df, [:var,:stdev])
 
         close(file)
     end
@@ -241,8 +284,8 @@ function loadmodel(modelfile::String)::Tuple{MultivariateModel,Array{Float64,1},
     jldfile = jldopen(modelfile, "r")
 
     modeltype = jldfile["modeltype"]
-    stdevs = jldfile["stdevs"] |> df -> convert(Array{Float64,2}, df[:,[:mean]])[:]
-    means = jldfile["means"] |> df -> convert(Array{Float64,2}, df[:,[:stdev]])[:]
+    stdevs = jldfile["stdevs"] |> df -> convert(Array{Float64,2}, df[:,[:stdev]])[:]
+    means = jldfile["means"] |> df -> convert(Array{Float64,2}, df[:,[:mean]])[:]
 
     variables = jldfile["means"][:,:var]
 
