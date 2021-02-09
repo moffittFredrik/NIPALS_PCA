@@ -6,11 +6,11 @@ struct Yvariable
     valtype::Type
 end
 
-function load_data(xfile, yfile, ycols::Array{Yvariable,1};idpair::Pair=1 => :id) where T <: String
+function load_data(xfile, yfile, yvars::Array{Yvariable,1};idpair::Pair=1 => :id) where T <: String
     xrawdf = CSV.File(xfile) |> DataFrame |> df -> rename(df, idpair)
-    yrawdf = @pipe CSV.File(yfile) |> DataFrame |> df -> rename(df, idpair) |> df -> select(df, ["id",getfield.(ycols, :label)...]) 
+    yrawdf = @pipe CSV.File(yfile) |> DataFrame |> df -> rename(df, idpair) |> df -> select(df, ["id",getfield.(yvars, :label)...]) 
     
-    noncatlabels::Array{String,1} = @pipe ycols |> filter(yc -> yc.valtype != CategoricalArray, _) |> getfield.(_, :label)
+    noncatlabels::Array{String,1} = @pipe yvars |> filter(yc -> yc.valtype != CategoricalArray, _) |> getfield.(_, :label)
     categorical!(yrawdf, Not(["id",noncatlabels...]))
 
     merged_df = innerjoin(xrawdf, yrawdf, on=:id)
@@ -19,14 +19,18 @@ function load_data(xfile, yfile, ycols::Array{Yvariable,1};idpair::Pair=1 => :id
     yrawdf = select(merged_df,names(yrawdf))
 
     continousNames = selectNumerical(yrawdf) |> names
-
     ycontinous = select(yrawdf, ["id",continousNames...])
-    ycategoricals = @pipe selectColumns(yrawdf, coltypes -> coltypes .<: CategoricalValue) |> names |> todaframe.(Ref(yrawdf), _)
+
+    categoricalNames = select(yrawdf, eltype.(eachcol(yrawdf)) .<: Union{Missing, CategoricalValue}) |> names
+
+    ycategoricals::Array{DataFrame,1} = @pipe select(yrawdf, categoricalNames) |> # create a new dataframe only containing categorical columns
+        onehot.(eachcol(_)) |>  # transform each column to a dataframe with onehot values 
+        insertcols!.(_, 1, :id => yrawdf[:,:id]) # insert column with row identifierto each dataframe
 
     ydf = undef
-    if hasCategorical(ycols) && hasContinous(ycols)
+    if hasCategorical(yvars) && hasContinous(yvars)
         ydf = innerjoin(ycontinous, ycategoricals..., on=:id)
-    elseif hasCategorical(ycols)
+    elseif hasCategorical(yvars)
         ydf = ycategoricals |> first
     else
         ydf = ycontinous
