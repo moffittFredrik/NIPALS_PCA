@@ -316,7 +316,7 @@ Get a onehot representation of a CategoricalArray
 function onehot(carray::CategoricalArray)    
     lvls = carray |> levels
 
-    hots = [(carray .== lv) |> bvals -> convert(Array{Float64,1},bvals) for lv in lvls]
+    hots = [(carray .== lv) |> bvals -> convert(Array{Union{Missing,Float64},1},bvals) for lv in lvls]
 
     DataFrame(hots) |> v -> rename!(v,Symbol.(lvls))
 end
