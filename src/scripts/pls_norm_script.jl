@@ -23,6 +23,11 @@ function parse_commandline()
             help = "calibrate or correct"
             required = true
 
+        "--uvscale"
+            help = "scale variables for unit variance"
+            arg_type = Bool
+            default = true    
+
         "--modelfile"
             help = "name of model file to read or write"
             required = true

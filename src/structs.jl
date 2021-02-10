@@ -199,17 +199,25 @@ function allobs(dataset::Dataset)::BitArray{1}
     BitArray{1}(ones(nobs(dataset)))
 end
 
-function normalize!(dataset::Dataset; doscale::Bool=false, stdevs=dataset.stdevs, means=dataset.means)
+function normalize!(dataset::Dataset; doscale::Bool=false, stdevs=dataset.stdevs, means=dataset.means, transformations=[])
 
+    #TODO:double check that it works 
     mean_mask = (!isnan).(means)
     std_mask = hasVariation.(stdevs)
 
     inc_mask = mean_mask .& std_mask
 
-    dataset.X .-= dataset.means[inc_mask]'
+    # has variables to be excluded
+    excludevars = sum(inc_mask) < nvars(dataset)
 
-    if doscale
-        dataset.X ./= dataset.stdevs[inc_mask]'
+    if !isempty(transformations) 
+        [transform(dataset) transform in transformations]
+    else
+        dataset.X[:,mean_mask] .-= dataset.means[mean_mask]'
+
+        if doscale
+            dataset.X[:,inc_mask] ./= dataset.stdevs[inc_mask]'
+        end
     end
 
     dataset.X[.~dataset.xmask] .= 0
@@ -220,8 +228,8 @@ end
 function normalize(dataset::Dataset; doscale::Bool=false, stdevs=dataset.stdevs, means=dataset.means)
 
     dscopy = copydataset(dataset)
-
-    normalize!(dscopy)
+ 
+    normalize!(dscopy,doscale=doscale)
 end
 
 function normalizedata(X::Array{Union{Missing,Float64},2};normalize::Bool=false)
@@ -252,7 +260,7 @@ $(FUNCTIONNAME)(model::T, dataset::Dataset, name::String) where T <: Multivariat
 
     Save PCA or PLS model as JLD2 file
 """
-function savemodel(model::T, dataset::Dataset, path::String) where T <: MultivariateModel
+function savemodel(model::T, dataset::Dataset, path::String, transformations::Array{String,1}) where T <: MultivariateModel
 
     values = fieldnames(T) |> fns -> getfield.(Ref(model), fns)
 
@@ -268,6 +276,8 @@ function savemodel(model::T, dataset::Dataset, path::String) where T <: Multivar
 
         file["stdevs"] = DataFrame(zip(dataset.value_columns, dataset.stdevs)) |> df -> rename!(df, [:var,:stdev])
 
+        file["transformations"] = transformations
+
         close(file)
     end
 end    
@@ -279,13 +289,15 @@ $(FUNCTIONNAME)(path::String)::Tuple{MultivariateModel,Array{Float64,1},Array{Fl
 
 
 """
-function loadmodel(modelfile::String)::Tuple{MultivariateModel,Array{Float64,1},Array{Float64,1},Array{String,1}}
+function loadmodel(modelfile::String)::Tuple{MultivariateModel,Array{Float64,1},Array{Float64,1},Array{String,1},Array{String,1}}
 
     jldfile = jldopen(modelfile, "r")
 
     modeltype = jldfile["modeltype"]
     stdevs = jldfile["stdevs"] |> df -> convert(Array{Float64,2}, df[:,[:stdev]])[:]
     means = jldfile["means"] |> df -> convert(Array{Float64,2}, df[:,[:mean]])[:]
+
+    transformations = jldfile["transformations"]
 
     variables = jldfile["means"][:,:var]
 
@@ -295,7 +307,7 @@ function loadmodel(modelfile::String)::Tuple{MultivariateModel,Array{Float64,1},
 
     close(jldfile)
 
-    type(values...),stdevs,means,variables
+    type(values...),stdevs,means,variables,transformations
 end
 
 function selectNumerical(df)
@@ -323,4 +335,8 @@ end
 
 function predictLevel(carray::CategoricalArray,predMatrix::Array{Union{Missing, Float64},2})::Array{String,1}
     predicted_classes = [findmax(row) |> last for row in eachrow(predMatrix)] |> maxidxs -> getindex(levels(carray),maxidxs)
+end
+
+function getTransformations(model::T) where T <: MultivariateModel
+    return []
 end

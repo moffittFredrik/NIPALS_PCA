@@ -9,14 +9,15 @@ end
 function load_data(xfile, yfile, yvars::Array{Yvariable,1};idpair::Pair=1 => :id) where T <: String
     xrawdf = CSV.File(xfile) |> DataFrame |> df -> rename(df, idpair)
     yrawdf = @pipe CSV.File(yfile) |> DataFrame |> df -> rename(df, idpair) |> df -> select(df, ["id",getfield.(yvars, :label)...]) 
-    
-    noncatlabels::Array{String,1} = @pipe yvars |> filter(yc -> yc.valtype != CategoricalArray, _) |> getfield.(_, :label)
-    categorical!(yrawdf, Not(["id",noncatlabels...]))
 
     merged_df = innerjoin(xrawdf, yrawdf, on=:id)
-
+    
+    noncatlabels::Array{String,1} = @pipe yvars |> filter(yc -> yc.valtype != CategoricalArray, _) |> getfield.(_, :label)
+    
     xdf = select(merged_df,names(xrawdf)) |> selectNumerical
     yrawdf = select(merged_df,names(yrawdf))
+    
+    categorical!(yrawdf, Not(["id",noncatlabels...]))
 
     continousNames = selectNumerical(yrawdf) |> names
     ycontinous = select(yrawdf, ["id",continousNames...])
@@ -57,7 +58,18 @@ $(FUNCTIONNAME)(modelfile::String,xfile::String, outfile::String)
     Loads model from jld2 file, predicts using xfile and exports residual matrix into .csv file
 """
 function predict_xres(modelfile::String, xfile::String, outfile::String)::DataFrame
-    pls, stdevs, means, modelvariables = loadmodel(modelfile)
+    pls, stdevs, means, modelvariables, transformations = loadmodel(modelfile)
+
+    #----------------------------------------------------
+    #TODO: implement proper handling of transformations
+    #= transformations = getTransformations(pls)
+    push!(transformations,docenter(means))
+    push!(transformations,douvscale(stdevs))
+
+    [transform(preddataset) for transform in transformations] =#
+    #----------------------------------------------------
+
+    douv = "uv" in transformations
 
     outfileext = splitext(outfile)|> last 
     delim = outfileext == ".csv" ? "," : "\t"
@@ -66,15 +78,23 @@ function predict_xres(modelfile::String, xfile::String, outfile::String)::DataFr
     preddataset = @pipe xdf |>
         select(_,Symbol.(modelvariables))|>
         parseDataFrame(_) |> 
-        normalize!(_, doscale=true, stdevs=stdevs, means=means)
+        normalize!(_, doscale=douv, stdevs=stdevs, means=means)
 
     YpredVar, Xres = predictY(preddataset, pls)
 
-    outdf::DataFrame =   @pipe DataFrame(Xres) |> rename!(_, Symbol.(preddataset.value_columns)) |> hcat(xdf[:,[1]],_) 
+    outdf::DataFrame = @pipe DataFrame(Xres) |> rename!(_, Symbol.(preddataset.value_columns)) |> hcat(xdf[:,[1]],_) 
 
     CSV.write(outfile, outdf, delim = delim)
 
     outdf
+end
+
+function docenter(means)
+    dataset->dataset.X .-= means'    
+end
+
+function douvscale(stdevs)
+    dataset->dataset.X ./= stdevs'    
 end
 
 function splitArrayArgs(parsed_args, field)
@@ -96,8 +116,10 @@ $(FUNCTIONNAME)(xdf::DataFrame, ydf::DataFrame, A::Int64, modelfile::String; fil
 
     Variables with more than 25% missing values are excluded by default
 """
-function calibrate_model(xdf::DataFrame, ydf::DataFrame, A::Int64, modelfile::String; filters = [dataset -> dataset.mvs .< 0.25])
+function calibrate_model(xdf::DataFrame, ydf::DataFrame, A::Int64, modelfile::String; filters = [dataset -> dataset.mvs .< 0.25], transformations=["center","uv"])
     
+    uvscale = "uv" in transformations
+
     # allow some missingness in x data
     xobsfilters = [ds -> calcObsMissingValues(ds) .<= 0.5]
 
@@ -120,20 +142,16 @@ function calibrate_model(xdf::DataFrame, ydf::DataFrame, A::Int64, modelfile::St
     yvarmask = filterVariables(ydataset,filters=filters)
 
     # copy datasets from filter masks 
-    xdataset = copydataset(xdataset,obsmask,xvarmask) |> normalize
-    ydataset = copydataset(ydataset,obsmask,yvarmask) |> normalize
+    xdataset = copydataset(xdataset,obsmask,xvarmask) |> ds -> normalize(ds,doscale=uvscale)
+    ydataset = copydataset(ydataset,obsmask,yvarmask) |> ds -> normalize(ds,doscale=true)
 
     # calculate PLS model
     pls = calcPLS(xdataset, ydataset, A)
 
     # save PLS model to disk
-    savemodel(pls, xdataset, modelfile)
+    savemodel(pls, xdataset, modelfile,transformations)
 
     pls
-end
-
-function mergedatasets()
-
 end
 
 """
@@ -149,6 +167,12 @@ function calibrate_model(parsed_args::Dict{String,Any})::MultivariateModel
 
     mvcutoff = parsed_args["mvcutoff"]
     minvalues = parsed_args["minvalues"]
+    uvscale = parsed_args["uvscale"]
+
+    transformations = ["center"]
+    if uvscale
+        push!(transformations,"uv")
+    end
 
     varfilters = [dataset -> dataset.mvs .<= mvcutoff, dataset -> dataset.varvalues .>= minvalues]
 
@@ -169,7 +193,7 @@ function calibrate_model(parsed_args::Dict{String,Any})::MultivariateModel
 
         xdf, ydf = load_data(xfile, yfile, yvars)
 
-        calibrate_model(xdf, ydf, A, modelfile,filters=varfilters)
+        calibrate_model(xdf, ydf, A, modelfile,filters=varfilters, transformations = transformations)
     end
 end
 
