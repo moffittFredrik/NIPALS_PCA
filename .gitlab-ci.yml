@@ -1,4 +1,4 @@
-image: julia:1.4     
+image: julia:1.6.0-buster     
 
 variables:
   MOFFITT_CERTS: "/etc/gitlab-runner/certs/moffitt-ca.crt /etc/gitlab-runner/certs/moffitt-ca-int.crt /etc/gitlab-runner/certs/moffitt-chain"
