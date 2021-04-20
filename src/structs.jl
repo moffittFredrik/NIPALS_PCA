@@ -125,6 +125,10 @@ function parseMatrix(X::Array{Union{Missing, Float64},2},value_columns::Array{St
     Dataset(Xtr, var_means, var_stdevs, value_columns, xmask, sum(.~xmask) > 0, mvs, varvalues,ranges)
 end
 
+function parseDataFrame(X::Matrix{Union{Missing,Float64}},value_columns::Vector{String}; filters=[dataset-> .~isnan.(dataset.means)])
+    return parseMatrix(X,value_columns) |> ds -> filterDataset(ds,filters=filters)
+end
+
 function parseDataFrame(df::AbstractDataFrame; filters=[dataset-> .~isnan.(dataset.means)])::Dataset
 
     value_columns = names(df[:,eltype.(eachcol(df)) |> coltypes -> isnumcol.(coltypes)])
