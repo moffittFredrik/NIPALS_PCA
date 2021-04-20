@@ -30,6 +30,9 @@ $(TYPEDFIELDS)
 struct PCA <: MultivariateModel
     T::DataFrame
     P::DataFrame
+    r2x_cum::Vector{Float64}
+    r2x::Vector{Float64}
+    eigenvalues::Vector{Float64}
 end
 
 """
@@ -126,7 +129,7 @@ function parseDataFrame(df::AbstractDataFrame; filters=[dataset-> .~isnan.(datas
 
     value_columns = names(df[:,eltype.(eachcol(df)) |> coltypes -> isnumcol.(coltypes)])
 
-    X = convert(Array{Union{Missing,Float64},2}, df[:,value_columns])
+    X = Matrix{Union{Missing,Float64}}(df[:,value_columns])
 
     return parseMatrix(X,value_columns) |> ds -> filterDataset(ds,filters=filters)
 end

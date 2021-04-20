@@ -50,6 +50,8 @@ function calcPCA(dataset::Dataset, comps::Int64=3; dCrit = 1e-23, maxIter = 1000
 
     n,k = size(X)
 
+    r2x_cum = Float64[]
+
     T = Array{Float64,1}[]
     #T = zeros(n,comps)
     P = Array{Float64,1}[]
@@ -88,10 +90,27 @@ function calcPCA(dataset::Dataset, comps::Int64=3; dCrit = 1e-23, maxIter = 1000
         
         # after calculating each component, set zeroes in missing values
         X[.~dataset.xmask] .= 0
+
+        # calculate sum of squares
+        ssx = sum(X.^2)
+
+        # Calculate cumulative explained variation
+        expl_var = (ssx_orig - ssx) / ssx_orig;
+
+        push!(r2x_cum,expl_var)
     end
 
+    r2x = r2x_cum .- [0,r2x_cum[1:end-1]...]
+
+    eigenvalues = r2x .* min(size(dataset.X)...)
+
     # convert Array of Array to 2D array
-    PCA(DataFrame(hcat(T...),[Symbol("t$(a)") for a in range(1,stop=comps)]),DataFrame(hcat(P...),[Symbol("p$(a)") for a in range(1,stop=comps)]))
+    PCA(
+        DataFrame(hcat(T...),[Symbol("t$(a)") for a in range(1,stop=comps)]),
+        DataFrame(hcat(P...),[Symbol("p$(a)") for a in range(1,stop=comps)]),
+        r2x_cum,
+        r2x,
+        eigenvalues)
 end    
 
 export norm
@@ -120,7 +139,7 @@ function xpred(t::Array{Float64,1},p::Array{Float64,1})
     xpred = t*p'
 end
 
-function fill(matrix,dataset::Dataset;value::Float64=0.0)
+function fill!(matrix,dataset::Dataset;value::Float64=0.0)
     matrix[.~dataset.xmask] .= 0
 
     matrix
@@ -155,18 +174,21 @@ function calcVariances(dataset::Dataset, model::PCA)::NamedTuple
 
     ssx_orig = sum(dataset.X.^2)
 
-    Xpreds::Array{Float64,3} = @pipe [ xpred(T[:,a],P[:,a]) for a in 1:A] |> 
-        fill.(_,Ref(dataset)) |> # fill missing values with zeroes
-        cat(_...,dims=3) # convert array of matrices to 3D matrix
+    r2x_cum = Float64[]
 
-    explvar::Array{Float64,1} = @pipe sum(Xpreds.^2,dims=bycomp) |> toarray
+    Xres = dataset.X |> copy
 
-    ssx = @pipe sum((dataset.X .- Xpreds).^2,dims=bycomp) |> toarray
-
-    eigenvalues = explvar .* min(size(dataset.X)...) / 100
+    for a in 1:A
+        Xres .-= T[:,a]*P[:,a]' 
         
-    r2x =(ssx_orig .- ssx) ./ ssx_orig
-    r2x_cum = cumsum(r2x)
+        fill!(Xres,dataset)
+
+        push!(r2x_cum,((ssx_orig - sum(Xres.^2)) / ssx_orig))
+    end
+
+    r2x = r2x_cum .- [0,r2x_cum[1:end-1]...]
+
+    eigenvalues = r2x .* min(size(dataset.X)...)
 
     (;r2x,r2x_cum,eigenvalues)
 
