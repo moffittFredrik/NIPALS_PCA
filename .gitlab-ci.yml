@@ -1,9 +1,10 @@
 image: julia:1.4     
 
 variables:
-  MOFFITT_CERTS: "/etc/gitlab-runner/certs/moffitt-ca.cer /etc/gitlab-runner/certs/moffitt-ca-int.cer /etc/gitlab-runner/certs/moffitt-chain"           # image comes from Docker hub
+  MOFFITT_CERTS: "/etc/gitlab-runner/certs/moffitt-ca.crt /etc/gitlab-runner/certs/moffitt-ca-int.crt /etc/gitlab-runner/certs/moffitt-chain"
 
 before_script:
+  - mkdir /usr/local/share/ca-certificates/moffitt
   - cp $MOFFITT_CERTS /usr/local/share/ca-certificates/moffitt/ && update-ca-certificates
   - julia --project=@. -e "import Pkg; Pkg.build()"
 
