@@ -9,6 +9,9 @@ using Pipe
 
     isnumcol(type) = type <: Union{Missing,Number}
 
+    pwd()|> println
+    pathof(NIPALS_PCA) |> println
+
     irisdir = @pipe pathof(NIPALS_PCA) |> splitpath |> _[1:end - 2] |> joinpath(_..., "test", "data", "iris")
 
     erange = range(1,length=4,step=2)
