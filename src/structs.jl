@@ -129,6 +129,14 @@ function parseDataFrame(X::Matrix{Union{Missing,Float64}},value_columns::Vector{
     return parseMatrix(X,value_columns) |> ds -> filterDataset(ds,filters=filters)
 end
 
+function parseDataFrame(X::Matrix{Union{Missing,Float64}})
+
+    value_columns = collect(range(1,length=size(X,2))) .|> string .|> i -> "var"*i
+
+    return parseDataFrame(X,value_columns)
+
+end
+
 function parseDataFrame(df::AbstractDataFrame; filters=[dataset-> .~isnan.(dataset.means)])::Dataset
 
     value_columns = names(df[:,eltype.(eachcol(df)) |> coltypes -> isnumcol.(coltypes)])
