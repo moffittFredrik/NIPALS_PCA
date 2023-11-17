@@ -6,20 +6,12 @@ A Julia package for calculating PCA and PLS using the NIPALS implementation. Bot
 
 ## Installation
 
-In Julia add https://gitlab.moffitt.usf.edu:8000/Bios2Projects/NIPALS_PCA as [unregistered package](https://julialang.github.io/Pkg.jl/v1.1/managing-packages/) (change to GitHub)
-
 ```julia-repl
 using Pkg
 Pkg.add("https://gitlab.moffitt.usf.edu:8000/Bios2Projects/NIPALS_PCA")
 ```
 
 ## Running Julia REPL
-
-Julia can be started using
-
-1. The base installation
-2. From Singularity container (in progress, details pending)
-3. Utilizing the downloaded folder as a local environment.
 
 To activate NIPALS_PCA as local environment
 
