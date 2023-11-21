@@ -44,11 +44,9 @@ $(FUNCTIONNAME)(dataset::Dataset, comps::Int64=3; dCrit = 1e-23, maxIter = 1000)
 julia> calcPCA(datset,3)
 ```
 """
-function calcPCA(dataset::Dataset, comps::Int64=3; dCrit = 1e-23, maxIter = 1000)::PCA
+function calcPCA(dataset::Dataset, comps::Int64=3; dCrit = 1e-23, maxIter = 1000, minimal=false)::PCA
 
     X::Array{Union{Missing, Float64},2} = dataset.X
-
-    n,k = size(X)
 
     r2x_cum = Float64[]
 
@@ -62,8 +60,9 @@ function calcPCA(dataset::Dataset, comps::Int64=3; dCrit = 1e-23, maxIter = 1000
 
     #dCrit = 1e-23
     #maxIter = 1000
-
-    ssx_orig = sum(X.^2)
+    if !minimal
+        ssx_orig = sum(X.^2)
+    end
 
     for i in range(1,stop=comps)
 
@@ -84,25 +83,28 @@ function calcPCA(dataset::Dataset, comps::Int64=3; dCrit = 1e-23, maxIter = 1000
         push!(T,convert(Array{Float64,1},t))
         push!(P,convert(Array{Float64,1},p))
 
-        println("Iter:$(iter) ConvValue:$(diff)")
-
         X -= t*p'
+        
+        if !minimal
+            println("Iter:$(iter) ConvValue:$(diff)")
+           
+            # calculate sum of squares
+            ssx = sum(X.^2)
+
+            # Calculate cumulative explained variation
+            expl_var = (ssx_orig - ssx) / ssx_orig;
+
+            push!(r2x_cum,expl_var)
+        end    
         
         # after calculating each component, set zeroes in missing values
         X[.~dataset.xmask] .= 0
 
-        # calculate sum of squares
-        ssx = sum(X.^2)
-
-        # Calculate cumulative explained variation
-        expl_var = (ssx_orig - ssx) / ssx_orig;
-
-        push!(r2x_cum,expl_var)
     end
 
-    r2x = r2x_cum .- [0,r2x_cum[1:end-1]...]
+    r2x = minimal ? [] : r2x_cum .- [0,r2x_cum[1:end-1]...]
 
-    eigenvalues = r2x .* min(size(dataset.X)...)
+    eigenvalues = minimal ? [] : r2x .* min(size(dataset.X)...)
 
     # convert Array of Array to 2D array
     PCA(
@@ -111,7 +113,7 @@ function calcPCA(dataset::Dataset, comps::Int64=3; dCrit = 1e-23, maxIter = 1000
         r2x_cum,
         r2x,
         eigenvalues)
-end    
+end       
 
 export norm
 
